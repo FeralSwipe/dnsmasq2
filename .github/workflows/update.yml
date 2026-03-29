@@ -1,4 +1,4 @@
-name: Update OISD lists (safe)
+name: Update oisd lists
 
 on:
   schedule:
@@ -18,103 +18,50 @@ jobs:
         with:
           fetch-depth: 0
 
-      # =========================
-      # DOWNLOAD DNSMASQ
-      # =========================
+      # ---------------- DNSMASQ ----------------
 
-      - name: Download DNSMASQ BIG
+      - name: Download BIG dnsmasq
         run: curl -s https://big.oisd.nl/dnsmasq2 -o oisd_big.lst
 
-      - name: Download DNSMASQ SMALL
+      - name: Download SMALL dnsmasq
         run: curl -s https://small.oisd.nl/dnsmasq2 -o oisd_small.lst
 
-      # =========================
-      # CLEAN DNSMASQ (STRICT)
-      # =========================
-
-      - name: Clean DNSMASQ inputs
+      - name: Clean dnsmasq BIG
         run: |
-          sed -i 's/\r$//' oisd_big.lst oisd_small.lst custom.lst
+          sed -i '/^#/d' oisd_big.lst
+          sed -i '/^$/d' oisd_big.lst
 
-          grep '^local=/' oisd_big.lst > big_clean.lst || true
-          grep '^local=/' oisd_small.lst > small_clean.lst || true
-
-      # =========================
-      # NORMALIZE CUSTOM FOR DNSMASQ
-      # =========================
-
-      - name: Normalize custom (dnsmasq format)
+      - name: Clean dnsmasq SMALL
         run: |
-          sed '/^$/d' custom.lst | \
-          sed 's#^local=/##; s#/$##' | \
-          awk '{print "local=/"$0"/"}' > custom_dnsmasq.lst
+          sed -i '/^#/d' oisd_small.lst
+          sed -i '/^$/d' oisd_small.lst
 
-      # =========================
-      # BUILD DNSMASQ OUTPUTS
-      # =========================
-
-      - name: Build dnsmasq outputs (SAFE CONCAT)
+      - name: Build dnsmasq outputs (NO SORT)
         run: |
-          printf "" > dnsmasq2b.lst
-          cat big_clean.lst >> dnsmasq2b.lst
-          printf "\n" >> dnsmasq2b.lst
-          cat custom_dnsmasq.lst >> dnsmasq2b.lst
+          cat oisd_big.lst custom.lst > dnsmasq2b.lst
+          cat oisd_small.lst custom.lst > dnsmasq2s.lst
 
-          printf "" > dnsmasq2s.lst
-          cat small_clean.lst >> dnsmasq2s.lst
-          printf "\n" >> dnsmasq2s.lst
-          cat custom_dnsmasq.lst >> dnsmasq2s.lst
+      # ---------------- SURGE ----------------
 
-      # =========================
-      # DOWNLOAD SURGE
-      # =========================
+      - name: Download BIG surge
+        run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o oisd_big_surge.list
 
-      - name: Download SURGE BIG
-        run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o surge_big.raw
+      - name: Download SMALL surge
+        run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o oisd_small_surge.list
 
-      - name: Download SURGE SMALL
-        run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o surge_small.raw
-
-      # =========================
-      # CLEAN SURGE INPUTS
-      # =========================
-
-      - name: Clean SURGE inputs
+      - name: Clean surge lists
         run: |
-          sed -i 's/\r$//' surge_big.raw surge_small.raw
+          sed -i '/^#/d' oisd_big_surge.list
+          sed -i '/^#/d' oisd_small_surge.list
+          sed -i '/^$/d' oisd_big_surge.list
+          sed -i '/^$/d' oisd_small_surge.list
 
-          grep -v '^#' surge_big.raw > surge_big.clean || true
-          grep -v '^#' surge_small.raw > surge_small.clean || true
-
-      # =========================
-      # NORMALIZE CUSTOM FOR SURGE
-      # =========================
-
-      - name: Normalize custom (surge format)
+      - name: Build surge outputs (NO SORT, custom last)
         run: |
-          sed '/^$/d' custom.lst | \
-          sed 's#^local=/##; s#/$##' | \
-          awk '{print "DOMAIN-SUFFIX,"$0}' > custom_surge.lst
+          cat oisd_big_surge.list custom.lst > surgeb.lst
+          cat oisd_small_surge.list custom.lst > surges.lst
 
-      # =========================
-      # BUILD SURGE OUTPUTS
-      # =========================
-
-      - name: Build surge outputs (SAFE)
-        run: |
-          printf "" > surgeb.lst
-          cat surge_big.clean >> surgeb.lst
-          printf "\n" >> surgeb.lst
-          cat custom_surge.lst >> surgeb.lst
-
-          printf "" > surges.lst
-          cat surge_small.clean >> surges.lst
-          printf "\n" >> surges.lst
-          cat custom_surge.lst >> surges.lst
-
-      # =========================
-      # COMMIT
-      # =========================
+      # ---------------- COMMIT ----------------
 
       - name: Commit changes
         run: |
@@ -125,12 +72,8 @@ jobs:
 
           git diff --cached --quiet && echo "No changes" && exit 0
 
-          git commit -m "Auto update OISD dnsmasq + surge lists"
-
-      # =========================
-      # PUSH
-      # =========================
+          git commit -m "Auto update oisd + surge lists"
 
       - name: Push changes
         run: |
-          git push --force-with-lease origin HEAD:main
+          git push origin HEAD:main
