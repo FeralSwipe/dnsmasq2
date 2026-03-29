@@ -5,13 +5,18 @@ on:
     - cron: "0 2 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download BIG list
         run: curl -s https://big.oisd.nl/dnsmasq2 -o oisd_big.lst
@@ -29,20 +34,27 @@ jobs:
           sed -i '/^#/d' oisd_small.lst
           sed -i '/^$/d' oisd_small.lst
 
-      - name: Build BIG final list
+      - name: Build BIG output
         run: |
           cat oisd_big.lst custom.lst > dnsmasq2b.lst
           sort -u dnsmasq2b.lst -o dnsmasq2b.lst
 
-      - name: Build SMALL final list
+      - name: Build SMALL output
         run: |
           cat oisd_small.lst custom.lst > dnsmasq2s.lst
           sort -u dnsmasq2s.lst -o dnsmasq2s.lst
 
-      - name: Commit & push
+      - name: Commit changes
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add *.lst
-          git commit -m "Auto update dnsmasq lists" || echo "No changes"
-          git push
+
+          git diff --cached --quiet && echo "No changes" && exit 0
+
+          git commit -m "Auto update dnsmasq lists"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
