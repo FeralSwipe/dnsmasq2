@@ -1,4 +1,4 @@
-name: Update oisd lists
+name: Update OISD Lists
 on:
   schedule:
     - cron: "0 2 * * *"
@@ -38,15 +38,15 @@ jobs:
               if not domain or domain.startswith("#"):
                   continue
               result.append(f"local=/{domain}/")
-          with open("custom_dnsmasq.lst", "w") as f:
+          with open("custom_dnsmasq.list", "w") as f:
               f.write("\n".join(result) + "\n")
           EOF
       - name: Build dnsmasq outputs
         run: |
           [ -n "$(tail -c1 oisd_big.lst)" ] && echo "" >> oisd_big.lst
           [ -n "$(tail -c1 oisd_small.lst)" ] && echo "" >> oisd_small.lst
-          cat oisd_big.lst custom_dnsmasq.lst > dnsmasq2b.lst
-          cat oisd_small.lst custom_dnsmasq.lst > dnsmasq2s.lst
+          cat oisd_big.lst custom_dnsmasq.list > dnsmasq2b.lst
+          cat oisd_small.lst custom_dnsmasq.list > dnsmasq2s.lst
 
       # ---------------- SURGE ----------------
       - name: Download BIG surge
@@ -70,15 +70,15 @@ jobs:
               if not domain or domain.startswith("#"):
                   continue
               result.append(f"DOMAIN-SUFFIX,{domain}")
-          with open("custom_surge.lst", "w") as f:
+          with open("custom_surge.list", "w") as f:
               f.write("\n".join(result) + "\n")
           EOF
       - name: Build surge outputs
         run: |
           [ -n "$(tail -c1 oisd_big_surge.lst)" ] && echo "" >> oisd_big_surge.lst
           [ -n "$(tail -c1 oisd_small_surge.lst)" ] && echo "" >> oisd_small_surge.lst
-          cat oisd_big_surge.lst custom_surge.lst > surgeb.lst
-          cat oisd_small_surge.lst custom_surge.lst > surges.lst
+          cat oisd_big_surge.lst custom_surge.list > surgeb.lst
+          cat oisd_small_surge.lst custom_surge.list > surges.lst
 
       # ---------------- COMMIT ----------------
       - name: Commit changes
@@ -87,7 +87,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add *.lst
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Auto update oisd + surge lists"
+          git commit -m "Auto Update OISD"
       - name: Push changes
         run: |
           git push origin HEAD:main
