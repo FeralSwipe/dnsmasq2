@@ -1,4 +1,4 @@
-name: Update dnsmasq lists
+name: Update oisd lists
 
 on:
   schedule:
@@ -18,31 +18,60 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download BIG list
+      # ---------------- DNSMASQ ----------------
+
+      - name: Download BIG dnsmasq
         run: curl -s https://big.oisd.nl/dnsmasq2 -o oisd_big.lst
 
-      - name: Download SMALL list
+      - name: Download SMALL dnsmasq
         run: curl -s https://small.oisd.nl/dnsmasq2 -o oisd_small.lst
 
-      - name: Clean BIG list
+      - name: Clean dnsmasq lists
         run: |
           sed -i '/^#/d' oisd_big.lst
-          sed -i '/^$/d' oisd_big.lst
-
-      - name: Clean SMALL list
-        run: |
           sed -i '/^#/d' oisd_small.lst
+          sed -i '/^$/d' oisd_big.lst
           sed -i '/^$/d' oisd_small.lst
 
-      - name: Build BIG output
+      - name: Build DNSMASQ outputs (custom local=/.../)
         run: |
           cat oisd_big.lst custom.lst > dnsmasq2b.lst
-          sort -u dnsmasq2b.lst -o dnsmasq2b.lst
-
-      - name: Build SMALL output
-        run: |
           cat oisd_small.lst custom.lst > dnsmasq2s.lst
-          sort -u dnsmasq2s.lst -o dnsmasq2s.lst
+
+      # ---------------- SURGE ----------------
+
+      - name: Download BIG surge
+        run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o surge_big.raw
+
+      - name: Download SMALL surge
+        run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o surge_small.raw
+
+      - name: Clean surge lists
+        run: |
+          sed -i '/^#/d' surge_big.raw
+          sed -i '/^#/d' surge_small.raw
+          sed -i '/^$/d' surge_big.raw
+          sed -i '/^$/d' surge_small.raw
+
+      - name: Build SURGE outputs (custom converted)
+        run: |
+          # BIG SURGE
+          cp surge_big.raw surgeb.lst
+
+          while IFS= read -r line; do
+            domain=$(echo "$line" | sed 's#local=##g' | sed 's#/##g')
+            echo "DOMAIN-SUFFIX,$domain" >> surgeb.lst
+          done < custom.lst
+
+          # SMALL SURGE
+          cp surge_small.raw surges.lst
+
+          while IFS= read -r line; do
+            domain=$(echo "$line" | sed 's#local=##g' | sed 's#/##g')
+            echo "DOMAIN-SUFFIX,$domain" >> surges.lst
+          done < custom.lst
+
+      # ---------------- COMMIT ----------------
 
       - name: Commit changes
         run: |
@@ -53,7 +82,7 @@ jobs:
 
           git diff --cached --quiet && echo "No changes" && exit 0
 
-          git commit -m "Auto update dnsmasq lists"
+          git commit -m "Auto update oisd dnsmasq + surge lists"
 
       - name: Push changes
         run: |
