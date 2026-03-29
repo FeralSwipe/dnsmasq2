@@ -1,0 +1,48 @@
+name: Update dnsmasq lists
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download BIG list
+        run: curl -s https://big.oisd.nl/dnsmasq2 -o oisd_big.lst
+
+      - name: Download SMALL list
+        run: curl -s https://small.oisd.nl/dnsmasq2 -o oisd_small.lst
+
+      - name: Clean BIG list
+        run: |
+          sed -i '/^#/d' oisd_big.lst
+          sed -i '/^$/d' oisd_big.lst
+
+      - name: Clean SMALL list
+        run: |
+          sed -i '/^#/d' oisd_small.lst
+          sed -i '/^$/d' oisd_small.lst
+
+      - name: Build BIG final list
+        run: |
+          cat oisd_big.lst custom.lst > dnsmasq2b.lst
+          sort -u dnsmasq2b.lst -o dnsmasq2b.lst
+
+      - name: Build SMALL final list
+        run: |
+          cat oisd_small.lst custom.lst > dnsmasq2s.lst
+          sort -u dnsmasq2s.lst -o dnsmasq2s.lst
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add *.lst
+          git commit -m "Auto update dnsmasq lists" || echo "No changes"
+          git push
