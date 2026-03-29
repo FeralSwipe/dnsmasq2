@@ -50,15 +50,15 @@ jobs:
 
       # ---------------- SURGE ----------------
       - name: Download BIG surge
-        run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o oisd_big_surge.list
+        run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o oisd_big_surge.lst
       - name: Download SMALL surge
-        run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o oisd_small_surge.list
+        run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o oisd_small_surge.lst
       - name: Clean surge lists
         run: |
-          sed -i '/^#/d' oisd_big_surge.list
-          sed -i '/^#/d' oisd_small_surge.list
-          sed -i '/^$/d' oisd_big_surge.list
-          sed -i '/^$/d' oisd_small_surge.list
+          sed -i '/^#/d' oisd_big_surge.lst
+          sed -i '/^#/d' oisd_small_surge.lst
+          sed -i '/^$/d' oisd_big_surge.lst
+          sed -i '/^$/d' oisd_small_surge.lst
       - name: Build surge custom block
         run: |
           python3 - <<'EOF'
@@ -75,10 +75,10 @@ jobs:
           EOF
       - name: Build surge outputs
         run: |
-          [ -n "$(tail -c1 oisd_big_surge.list)" ] && echo "" >> oisd_big_surge.list
-          [ -n "$(tail -c1 oisd_small_surge.list)" ] && echo "" >> oisd_small_surge.list
-          cat oisd_big_surge.list custom_surge.lst > surgeb.lst
-          cat oisd_small_surge.list custom_surge.lst > surges.lst
+          [ -n "$(tail -c1 oisd_big_surge.lst)" ] && echo "" >> oisd_big_surge.lst
+          [ -n "$(tail -c1 oisd_small_surge.lst)" ] && echo "" >> oisd_small_surge.lst
+          cat oisd_big_surge.lst custom_surge.lst > surgeb.lst
+          cat oisd_small_surge.lst custom_surge.lst > surges.lst
 
       # ---------------- COMMIT ----------------
       - name: Commit changes
