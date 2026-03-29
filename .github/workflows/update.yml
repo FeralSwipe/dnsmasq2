@@ -1,17 +1,13 @@
 name: Update oisd lists
-
 on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   update:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -19,61 +15,94 @@ jobs:
           fetch-depth: 0
 
       # ---------------- DNSMASQ ----------------
-
       - name: Download BIG dnsmasq
         run: curl -s https://big.oisd.nl/dnsmasq2 -o oisd_big.lst
-
       - name: Download SMALL dnsmasq
         run: curl -s https://small.oisd.nl/dnsmasq2 -o oisd_small.lst
-
       - name: Clean dnsmasq BIG
         run: |
           sed -i '/^#/d' oisd_big.lst
           sed -i '/^$/d' oisd_big.lst
-
       - name: Clean dnsmasq SMALL
         run: |
           sed -i '/^#/d' oisd_small.lst
           sed -i '/^$/d' oisd_small.lst
-
-      - name: Build dnsmasq outputs (NO SORT)
+      - name: Build dnsmasq custom block
         run: |
-          cat oisd_big.lst custom.lst > dnsmasq2b.lst
-          cat oisd_small.lst custom.lst > dnsmasq2s.lst
+          # Читаем домены из custom.lst (пропускаем пустые строки и комментарии)
+          # и превращаем каждый домен в формат local=/домен/
+          python3 - <<'EOF'
+          import re
+
+          with open("custom.lst") as f:
+              lines = f.read().splitlines()
+
+          result = []
+          for line in lines:
+              line = line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              # Извлекаем домен — берём последнее слово в строке
+              domain = line.split()[-1]
+              result.append(f"local=/{domain}/")
+
+          with open("custom_dnsmasq.lst", "w") as f:
+              f.write("\n".join(result) + "\n")
+          EOF
+      - name: Build dnsmasq outputs
+        run: |
+          # Гарантируем перенос строки в конце скаченного файла перед склейкой
+          [ -n "$(tail -c1 oisd_big.lst)" ] && echo "" >> oisd_big.lst
+          [ -n "$(tail -c1 oisd_small.lst)" ] && echo "" >> oisd_small.lst
+          cat oisd_big.lst custom_dnsmasq.lst > dnsmasq2b.lst
+          cat oisd_small.lst custom_dnsmasq.lst > dnsmasq2s.lst
 
       # ---------------- SURGE ----------------
-
       - name: Download BIG surge
         run: curl -s https://dl.oisd.nl/oisd_big_surge.list -o oisd_big_surge.list
-
       - name: Download SMALL surge
         run: curl -s https://dl.oisd.nl/oisd_small_surge.list -o oisd_small_surge.list
-
       - name: Clean surge lists
         run: |
           sed -i '/^#/d' oisd_big_surge.list
           sed -i '/^#/d' oisd_small_surge.list
           sed -i '/^$/d' oisd_big_surge.list
           sed -i '/^$/d' oisd_small_surge.list
-
-      - name: Build surge outputs (NO SORT, custom last)
+      - name: Build surge custom block
         run: |
-          cat oisd_big_surge.list custom.lst > surgeb.lst
-          cat oisd_small_surge.list custom.lst > surges.lst
+          python3 - <<'EOF'
+          import re
+
+          with open("custom.lst") as f:
+              lines = f.read().splitlines()
+
+          result = []
+          for line in lines:
+              line = line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              # Извлекаем домен — берём последнее слово в строке
+              domain = line.split()[-1]
+              result.append(f"DOMAIN-SUFFIX,{domain}")
+
+          with open("custom_surge.lst", "w") as f:
+              f.write("\n".join(result) + "\n")
+          EOF
+      - name: Build surge outputs
+        run: |
+          [ -n "$(tail -c1 oisd_big_surge.list)" ] && echo "" >> oisd_big_surge.list
+          [ -n "$(tail -c1 oisd_small_surge.list)" ] && echo "" >> oisd_small_surge.list
+          cat oisd_big_surge.list custom_surge.lst > surgeb.lst
+          cat oisd_small_surge.list custom_surge.lst > surges.lst
 
       # ---------------- COMMIT ----------------
-
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add *.lst
-
           git diff --cached --quiet && echo "No changes" && exit 0
-
           git commit -m "Auto update oisd + surge lists"
-
       - name: Push changes
         run: |
           git push origin HEAD:main
