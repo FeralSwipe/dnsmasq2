@@ -29,29 +29,20 @@ jobs:
           sed -i '/^$/d' oisd_small.lst
       - name: Build dnsmasq custom block
         run: |
-          # Читаем домены из custom.lst (пропускаем пустые строки и комментарии)
-          # и превращаем каждый домен в формат local=/домен/
           python3 - <<'EOF'
-          import re
-
           with open("custom.lst") as f:
               lines = f.read().splitlines()
-
           result = []
           for line in lines:
-              line = line.strip()
-              if not line or line.startswith("#"):
+              domain = line.strip()
+              if not domain or domain.startswith("#"):
                   continue
-              # Извлекаем домен — берём последнее слово в строке
-              domain = line.split()[-1]
               result.append(f"local=/{domain}/")
-
           with open("custom_dnsmasq.lst", "w") as f:
               f.write("\n".join(result) + "\n")
           EOF
       - name: Build dnsmasq outputs
         run: |
-          # Гарантируем перенос строки в конце скаченного файла перед склейкой
           [ -n "$(tail -c1 oisd_big.lst)" ] && echo "" >> oisd_big.lst
           [ -n "$(tail -c1 oisd_small.lst)" ] && echo "" >> oisd_small.lst
           cat oisd_big.lst custom_dnsmasq.lst > dnsmasq2b.lst
@@ -71,20 +62,14 @@ jobs:
       - name: Build surge custom block
         run: |
           python3 - <<'EOF'
-          import re
-
           with open("custom.lst") as f:
               lines = f.read().splitlines()
-
           result = []
           for line in lines:
-              line = line.strip()
-              if not line or line.startswith("#"):
+              domain = line.strip()
+              if not domain or domain.startswith("#"):
                   continue
-              # Извлекаем домен — берём последнее слово в строке
-              domain = line.split()[-1]
               result.append(f"DOMAIN-SUFFIX,{domain}")
-
           with open("custom_surge.lst", "w") as f:
               f.write("\n".join(result) + "\n")
           EOF
