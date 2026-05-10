@@ -110,6 +110,10 @@ jobs:
           gh release create latest \
             --title "OISD Lists ${{ steps.date.outputs.date }}" \
             --notes "Auto updated OISD lists" \
+            oisd_big.lst \
+            oisd_small.lst \
+            oisd_big_surge.lst \
+            oisd_small_surge.lst \
             dnsmasq2b.lst \
             dnsmasq2s.lst \
             surgeb.lst \
