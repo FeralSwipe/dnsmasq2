@@ -101,7 +101,7 @@ jobs:
         run: echo "date=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
       - name: Delete old release
         run: |
-          gh release delete latest --yes || true
+          gh release delete latest --yes --cleanup-tag || true
           git push --delete origin latest || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
